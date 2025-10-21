@@ -80,11 +80,10 @@ return [
         'assignment_strategy' => env('PORTER_ASSIGNMENT_STRATEGY', 'replace'),
         /*
          | Configure how role keys are stored in the database.
-         | - 'encrypted': (Default) Reversible encryption using Laravel's encrypt()/decrypt().
          | - 'hashed': One-way hash using Laravel's Hash facade (requires role verification).
          | - 'plain': Plain text, only allowed in local/testing environments.
          */
-        'key_storage' => env('PORTER_KEY_STORAGE', 'encrypted'),
+        'key_storage' => env('PORTER_KEY_STORAGE', 'hashed'),
         /*
          | Hash rounds for bcrypt when using 'hashed' storage mode.
          | Higher values increase security but also CPU usage.
