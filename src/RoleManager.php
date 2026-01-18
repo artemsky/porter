@@ -68,7 +68,7 @@ final class RoleManager implements RoleManagerContract
                 $assignmentData[$tenantColumn] = $tenantId;
             }
 
-            $assignment = Roster::firstOrCreate($assignmentData);
+            $assignment = $this->resolveRosterModel()::firstOrCreate($assignmentData);
 
             if ($assignment->wasRecentlyCreated) {
                 RoleAssigned::dispatch($user, $target, $roleInstance);
@@ -141,7 +141,7 @@ final class RoleManager implements RoleManagerContract
         $roleInstance = $this->resolveRole($role);
         $encryptedKey = $roleInstance::getDbKey();
 
-        return Roster::where([
+        return $this->resolveRosterModel()::where([
             'roleable_type' => $target->getMorphClass(),
             'roleable_id' => $target->getKey(),
             'role_key' => $encryptedKey,
@@ -158,7 +158,7 @@ final class RoleManager implements RoleManagerContract
      */
     public function getAssignedEntitiesByKeysByType(AssignableEntity $target, array $keys, string $type): Collection
     {
-        return Roster::query()->where([
+        return $this->resolveRosterModel()::query()->where([
             'assignable_type' => $target->getMorphClass(),
             'assignable_id' => $target->getKey(),
             'roleable_type' => $type,
@@ -180,7 +180,7 @@ final class RoleManager implements RoleManagerContract
     public function getAssignedEntitiesByType(AssignableEntity $entity, string $type): Collection
     {
         if (! RoleCacheManager::isEnabled()) {
-            return Roster::where([
+            return $this->resolveRosterModel()::where([
                 'roleable_type' => $type,
                 'assignable_type' => $entity->getMorphClass(),
                 'assignable_id' => $entity->getKey(),
@@ -191,11 +191,14 @@ final class RoleManager implements RoleManagerContract
 
         $cacheKey = RoleCacheManager::generateAssignedEntitiesCacheKey($entity, $type);
 
-        return RoleCacheManager::remember($cacheKey, RoleCacheManager::getTtl('assigned_entities'), fn () => Roster::where([
-            'roleable_type' => $type,
-            'assignable_type' => $entity->getMorphClass(),
-            'assignable_id' => $entity->getKey(),
-        ])
+        return RoleCacheManager::remember(
+            $cacheKey,
+            RoleCacheManager::getTtl('assigned_entities'),
+            fn () => $this->resolveRosterModel()::where([
+                'roleable_type' => $type,
+                'assignable_type' => $entity->getMorphClass(),
+                'assignable_id' => $entity->getKey(),
+            ])
             ->with('roleable')
             ->get()
             ->pluck('roleable'));
@@ -211,7 +214,7 @@ final class RoleManager implements RoleManagerContract
     public function getParticipantsWithRoles(RoleableEntity $target): Collection
     {
         if (! RoleCacheManager::isEnabled()) {
-            return Roster::where([
+            return $this->resolveRosterModel()::where([
                 'roleable_id' => $target->getKey(),
                 'roleable_type' => $target->getMorphClass(),
             ])
@@ -222,7 +225,7 @@ final class RoleManager implements RoleManagerContract
         return RoleCacheManager::remember(
             RoleCacheManager::generateParticipantsCacheKey($target),
             RoleCacheManager::getTtl('participants'),
-            fn () => Roster::where([
+            fn () => $this->resolveRosterModel()::where([
                 'roleable_id' => $target->getKey(),
                 'roleable_type' => $target->getMorphClass(),
             ])
@@ -268,7 +271,7 @@ final class RoleManager implements RoleManagerContract
      */
     public function hasAnyRoleOn(AssignableEntity $user, RoleableEntity $target): bool
     {
-        return Roster::where([
+        return $this->resolveRosterModel()::where([
             'assignable_id' => $user->getKey(),
             'assignable_type' => $user->getMorphClass(),
             'roleable_id' => $target->getKey(),
@@ -285,7 +288,7 @@ final class RoleManager implements RoleManagerContract
      */
     public function getRoleOn(AssignableEntity $user, RoleableEntity $target): ?RoleContract
     {
-        $roster = Roster::where([
+        $roster = $this->resolveRosterModel()::where([
             'assignable_id' => $user->getKey(),
             'assignable_type' => $user->getMorphClass(),
             'roleable_type' => $target->getMorphClass(),
@@ -381,7 +384,7 @@ final class RoleManager implements RoleManagerContract
      */
     private function removeWithinTransaction(AssignableEntity $user, RoleableEntity $target): void
     {
-        $assignments = Roster::where([
+        $assignments = $this->resolveRosterModel()::where([
             'assignable_type' => $user->getMorphClass(),
             'assignable_id' => $user->getKey(),
             'roleable_id' => $target->getKey(),
@@ -396,7 +399,7 @@ final class RoleManager implements RoleManagerContract
             }
 
             $assignmentIds = $assignments->pluck('id');
-            Roster::whereIn('id', $assignmentIds)->delete();
+            $this->resolveRosterModel()::whereIn('id', $assignmentIds)->delete();
 
             foreach ($assignments as $assignment) {
                 $encryptedKey = $assignment->getRoleDBKey();
@@ -441,7 +444,7 @@ final class RoleManager implements RoleManagerContract
     private function executeRoleCheck(AssignableEntity $user, RoleableEntity $target, string $encryptedKey): bool
     {
         // First try exact match (most common case)
-        $exists = Roster::where([
+        $exists = $this->resolveRosterModel()::where([
             'assignable_id' => $user->getKey(),
             'assignable_type' => $user->getMorphClass(),
             'roleable_id' => $target->getKey(),
@@ -464,7 +467,7 @@ final class RoleManager implements RoleManagerContract
                     $plainKey = $role::getPlainKey();
 
                     // Check if there's a record with the plain text key
-                    $exists = Roster::where([
+                    $exists = $this->resolveRosterModel()::where([
                         'assignable_id' => $user->getKey(),
                         'assignable_type' => $user->getMorphClass(),
                         'roleable_id' => $target->getKey(),
@@ -541,7 +544,7 @@ final class RoleManager implements RoleManagerContract
         // Allow if user already has any role in the target's tenant (existing tenant participant)
         if ($roleableTenant !== null) {
             $tenantColumn = config('porter.multitenancy.tenant_column', 'tenant_id');
-            $hasRoleInTenant = Roster::where([
+            $hasRoleInTenant = $this->resolveRosterModel()::where([
                 'assignable_type' => $user->getMorphClass(),
                 'assignable_id' => $user->getKey(),
             ])->where($tenantColumn, $roleableTenant)->exists();
@@ -590,6 +593,15 @@ final class RoleManager implements RoleManagerContract
     }
 
     /**
+     * @return class-string
+     */
+
+    private function resolveRosterModel(): string
+    {
+         return config('porter.models.roster', Roster::class);
+    }
+
+    /**
      * Destroy all role assignments for a specific tenant.
      * Cache will self-heal as stale entries expire and new queries return correct results.
      *
@@ -605,6 +617,6 @@ final class RoleManager implements RoleManagerContract
 
         $tenantColumn = config('porter.multitenancy.tenant_column', 'tenant_id');
 
-        return Roster::where($tenantColumn, $tenantKey)->delete() > 0;
+        return $this->resolveRosterModel()::where($tenantColumn, $tenantKey)->delete() > 0;
     }
 }

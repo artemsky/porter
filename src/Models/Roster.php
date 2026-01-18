@@ -53,15 +53,6 @@ final class Roster extends Model
 
     public $timestamps = true;
 
-    protected $fillable = [
-        'assignable_type',
-        'assignable_id',
-        'roleable_type',
-        'roleable_id',
-        'role_key',
-        'tenant_id',
-    ];
-
     protected $casts = [
         'role_key' => RoleCast::class,
     ];
@@ -75,6 +66,21 @@ final class Roster extends Model
     {
         parent::__construct($attributes);
         $this->conditionallyLoadRelations();
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getFillable(): array
+    {
+        return [
+            'assignable_type',
+            'assignable_id',
+            'roleable_type',
+            'roleable_id',
+            'role_key',
+            config('porter.multitenancy.tenant_column', 'tenant_id'),
+        ];
     }
 
     /**
