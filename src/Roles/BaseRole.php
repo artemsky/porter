@@ -330,46 +330,7 @@ abstract class BaseRole implements Arrayable, Jsonable, RoleContract
      */
     public static function all(): array
     {
-        if (static::isRunningOutsideLaravel()) {
-            return static::getTestFixtureRoles();
-        }
-
-        if (static::isInTestingContext()) {
-            return static::getTestFixtureRoles();
-        }
-
         return static::getProductionRoles();
-    }
-
-    /**
-     * Check if running outside Laravel context.
-     */
-    private static function isRunningOutsideLaravel(): bool
-    {
-        return ! function_exists('config') || ! app()->bound('config');
-    }
-
-    /**
-     * Check if we're in a testing context.
-     */
-    private static function isInTestingContext(): bool
-    {
-        return (app()->environment('testing') || app()->environment() === 'testing')
-            || class_exists('\Hdaklue\Porter\Tests\Fixtures\TestAdmin');
-    }
-
-    /**
-     * Get test fixture roles.
-     */
-    private static function getTestFixtureRoles(): array
-    {
-        $roleClasses = [
-            \Hdaklue\Porter\Tests\Fixtures\TestAdmin::class,
-            \Hdaklue\Porter\Tests\Fixtures\TestEditor::class,
-            \Hdaklue\Porter\Tests\Fixtures\TestViewer::class,
-        ];
-
-        return array_map(fn ($class) => new $class(), $roleClasses);
     }
 
     /**
